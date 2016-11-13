@@ -431,7 +431,14 @@ sec_out_mcs_data(STREAM s, uint32 selected_protocol)
 	out_uint16_le(s, 0xca01);
 	out_uint16_le(s, 0xaa03);
 	out_uint32_le(s, g_keylayout);
-	out_uint32_le(s, 2600);	/* Client build. We are now 2600 compatible :-) */
+	/*
+	 * According to s.1.7 of MS-RDPESC if the build number is at least 4,304,
+	 * SCREDIR_VERSION_LONGHORN is assumed; otherwise SCREDIR_VERSIONXP is to be used
+	 */
+	/* Return the previous value of buildnum in a case of errors */
+	/* Just FYI actually */
+	//out_uint32_le(s, 2600);	/* Client build. We are now 2600 compatible :-) */
+	out_uint32_le(s, 7601);	/* Client build. We are now 7601 compatible :-) */
 
 	/* Unicode name of client, padded to 32 bytes */
 	rdp_out_unistr(s, g_hostname, hostlen);

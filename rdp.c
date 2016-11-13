@@ -63,6 +63,8 @@ uint32 g_rdp_shareid;
 
 extern RDPCOMP g_mppc_dict;
 
+extern uint32 vc_chunk_size;
+
 /* Session Directory support */
 extern RD_BOOL g_redirect;
 extern char *g_redirect_server;
@@ -908,6 +910,28 @@ rdp_out_brushcache_caps(STREAM s)
 	out_uint32_le(s, 1);	/* cache type */
 }
 
+/* 2.2.7.1.10 MS-RDPBCGR */
+/* Output virtual channel capability set */
+static void
+rdp_out_virtchan_caps(STREAM s)
+{
+	out_uint16_le(s, RDP_CAPSET_VC);
+	out_uint16_le(s, RDP_CAPLEN_VC);
+	/* VCCAPS_COMPR_SC */
+	out_uint32_le(s, 0x00000001);	/* compression flags */
+}
+
+static void
+rdp_process_virtchan_caps(STREAM s)
+{
+	uint32 flags, chunk_size;
+
+	in_uint32_le(s, flags);
+	in_uint32_le(s, chunk_size);
+
+	vc_chunk_size = chunk_size;
+}
+
 static uint8 caps_0x0d[] = {
 	0x01, 0x00, 0x00, 0x00, 0x09, 0x04, 0x00, 0x00,
 	0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -958,7 +982,7 @@ rdp_send_confirm_active(void)
 		RDP_CAPLEN_ACTIVATE + RDP_CAPLEN_CONTROL +
 		RDP_CAPLEN_SHARE +
 		RDP_CAPLEN_BRUSHCACHE + 0x58 + 0x08 + 0x08 + 0x34 /* unknown caps */  +
-		4 /* w2k fix, sessionid */ ;
+		4 /* w2k fix, sessionid */ + RDP_CAPLEN_VC;
 
 	if (g_rdp_version >= RDP_V5)
 	{
@@ -1004,6 +1028,7 @@ rdp_send_confirm_active(void)
 	rdp_out_control_caps(s);
 	rdp_out_share_caps(s);
 	rdp_out_brushcache_caps(s);
+	rdp_out_virtchan_caps(s);
 
 	rdp_out_unknown_caps(s, 0x0d, 0x58, caps_0x0d);	/* CAPSTYPE_INPUT */
 	rdp_out_unknown_caps(s, 0x0c, 0x08, caps_0x0c);	/* CAPSTYPE_SOUND */
@@ -1092,6 +1117,12 @@ rdp_process_server_caps(STREAM s, uint16 length)
 
 			case RDP_CAPSET_BITMAP:
 				rdp_process_bitmap_caps(s);
+				break;
+			case RDP_CAPSET_VC:
+				/* Parse only if we got VCChunkSize */
+				if (capset_length > 8) {
+					rdp_process_virtchan_caps(s);
+				}
 				break;
 		}
 

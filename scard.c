@@ -1605,12 +1605,14 @@ TS_SCardTransmit(STREAM in, STREAM out)
 	cbRecvLength = myCbRecvLength;
 
 	/* FIXME: handle responses with length > 448 bytes */
+#if 0
 	if (cbRecvLength > 448)
 	{
 		warning("Card response limited from %d to 448 bytes!\n", cbRecvLength);
 		DEBUG_SCARD(("SCARD:    Truncated %d to %d\n", (unsigned int) cbRecvLength, 448));
 		cbRecvLength = 448;
 	}
+#endif
 
 	if (pioRecvPci)
 	{
@@ -2231,9 +2233,13 @@ scard_device_control(RD_NTHANDLE handle, uint32 request, STREAM in, STREAM out)
 
 	/* Processing request */
 
+	/* See MS-RSPESC 1.3 Overview for protocol flow */
+
+	/* Set CommonTypeHeader (MS-RPCE 2.2.6.1) */
 	out_uint32_le(out, 0x00081001);	/* Header lines */
 	out_uint32_le(out, 0xCCCCCCCC);
 	psize = out->p;
+	/* Set PrivateTypeHeader (MS-RPCE 2.2.6.2) */
 	out_uint32_le(out, 0x00000000);	/* Size of data portion */
 	out_uint32_le(out, 0x00000000);	/* Zero bytes (may be usefull) */
 	pStatusCode = out->p;
@@ -2381,6 +2387,7 @@ scard_device_control(RD_NTHANDLE handle, uint32 request, STREAM in, STREAM out)
 	/* finish */
 	out->p = pend;
 
+	/* TODO: Check MS-RPCE 2.2.6.2 for alignment requirements (IIRC length must be integral multiple of 8) */
 	addToEnd = (pend - pStatusCode) % 16;
 	if (addToEnd < 16 && addToEnd > 0)
 	{
@@ -2460,6 +2467,7 @@ SC_addToQueue(RD_NTHANDLE handle, uint32 request, STREAM in, STREAM out)
 		data->epoch = curEpoch;
 		data->handle = handle;
 		data->request = request;
+		data->srv_buf_len = curBytesOut - 0x14;
 		data->in = duplicateStream(&(data->memHandle), in, 0, SC_TRUE);
 		if (data->in == NULL)
 		{
@@ -2534,8 +2542,8 @@ SC_deviceControl(PSCThreadData data)
 	   back to server due to it's considered as abdonend.
 	 */
 	if (data->epoch == curEpoch)
-		rdpdr_send_completion(data->device, data->id, 0, buffer_len, data->out->data,
-				      buffer_len);
+		rdpdr_send_scard_io_completion(data->device, data->id, 0, buffer_len, data->out->data,
+				      data->srv_buf_len);
 
 	SC_destroyThreadData(data);
 }
