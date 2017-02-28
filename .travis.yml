@@ -26,7 +26,7 @@ addons:
   sonarqube:
   branches:
     - master
- script:
+script:
   - sonar-scanner
   
 script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
