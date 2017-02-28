@@ -1,3 +1,7 @@
+Travis CI:
+[![Build Status](https://travis-ci.org/uglym8/rdesktop.svg?branch=master)](https://travis-ci.org/uglym8/rdesktop.svg?branch=master)
+
+
 # rdesktop - A Remote Desktop Protocol client
 
 rdesktop is an open source client for Microsoft's RDP protocol. It is
