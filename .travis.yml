@@ -28,12 +28,19 @@ addons:
   sonarqube:
   branches:
     - master
-script:
-  - ./bootstrap && ./configure --disable-credssp --disable-smartcard
+#script:
+  #- ./bootstrap && ./configure --disable-credssp --disable-smartcard
   #- make clean 
   #- build-wrapper --out-dir bw-outputs make
-  - sonar-scanner
+  #- sonar-scanner
 
   
-script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
+#script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
 
+before_script:
+- "./bootstrap"
+
+script:
+- "./configure --disable-credssp --disable-smartcard"
+- build-wrapper-linux-x86-64 --out-dir build-wrapper-out make clean all
+- sonar-scanner -X -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN
