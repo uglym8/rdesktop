@@ -21,5 +21,9 @@ addons:
     build_command:   "make"
     #branch_pattern: coverity_scan
     branch_pattern: master
+
+addons:
+  sonarqube:
     
 script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
+  - sonar-scanner
