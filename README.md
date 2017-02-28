@@ -1,6 +1,9 @@
 Travis CI:
 [![Build Status](https://travis-ci.org/uglym8/rdesktop.svg?branch=master)](https://travis-ci.org/uglym8/rdesktop.svg?branch=master)
 
+Coverity Scan:
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/11905/badge.svg?flat=1)](https://scan.coverity.com/projects/uglym8-rdesktop)
+ 
 
 # rdesktop - A Remote Desktop Protocol client
 
