@@ -1,5 +1,24 @@
 language: c
+compiler:gcc
 
-compiler: gcc
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "DNMyzvjXU8IeE8nQPj18WFUJv+imzE9TKxuW15ROyR6Qpc8oGjXIPn1O+8LCcQAZHK2L5gfdz52ZFjgKEdJxm6rYkht1LSLwKpqvHe0zEAk3hDNr+kvU8+ygB74eDp7TuHy8UeNmfQIiZ6YWYr7YwZ5o2jk08gPjFnDwoQ9QB+Agooq6FD2dIkjGtTaWB+Q2JoII+v9d+0/NGrdxFiqvk8+W6hNdGEL8/jcPnBxn3CQYvLNKVyTbTLu7TZARZfZ2pg9cogNXWDxE09Ymlu5KYDqHIY16/+0Pct23rms/vS/zJJ0MbZKLBUPDDjwzK2itie7opLW3o7+xdUyGsDZ4XzdcvZNfSvyNTwOZLoesdAuzHCdChNe27Sn8hDZWLpWlOAxTLGYgJ2hVdfpFsk829iOtSVCqAFqRIc++K1tSO3LN6qYkRtDS57M90FGp9PoHsFCGvERTX/vyqSx8hGmIauKBoLASOOtDg5JtkdypgcA+BFi+Xiwao3NgzrnZ84anvIVLUCGe0pNQyncnccnRr2zVyAYeNXZEMDLCf3diSZJguG5W5cyA4a8TUpreVSCYahizEx/iP/5z0LTWkjvL+S1MYPheZd472tQWrbRzpquXGldwdRnYia04X7l4Q1CI36cvcZ7kTIcCohqimAmkFxTAHHX6nfFfO5vo0maCkn4="
 
+#before_install:
+#     - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+
+addons:
+  coverity_scan:
+    project:
+      name: "uglym8/rdesktop"
+      description: "Unix client for Microsoft Remote Desktop Services. http://www.rdesktop.org"
+    notification_email: uglym8@gmail.com
+    build_command_prepend: "./bootstrap && ./configure --disable-credssp --disable-smartcard"
+    build_command:   "make"
+    #branch_pattern: coverity_scan
+    branch_pattern: master
+    
 script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
