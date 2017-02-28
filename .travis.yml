@@ -30,8 +30,8 @@ addons:
     - master
 script:
   - ./bootstrap && ./configure --disable-credssp --disable-smartcard
-  - make clean 
-  - build-wrapper --out-dir bw-outputs make
+  #- make clean 
+  #- build-wrapper --out-dir bw-outputs make
   - sonar-scanner
 
   
