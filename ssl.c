@@ -180,6 +180,8 @@ RDSSL_RKEY *
 rdssl_cert_to_rkey(RDSSL_CERT * cert, uint32 * key_len)
 {
 	int ret;
+	int check_pk_algo;
+
 	RDSSL_RKEY *pkey;
 	gnutls_datum_t m, e;
 
@@ -190,7 +192,15 @@ rdssl_cert_to_rkey(RDSSL_CERT * cert, uint32 * key_len)
 	uint8_t data[2048];
 	size_t len;
 
+	check_pk_algo = 1;
+
 	algo = gnutls_x509_crt_get_pk_algorithm(*cert, &bits);
+
+	/* By some reason, Microsoft sets the OID of the Public RSA key to
+	   the oid for "MD5 with RSA Encryption" instead of "RSA Encryption"
+
+	   Kudos to Richard Levitte for the finding this and proposed the fix
+	   using OpenSSL. */
 
 	if (algo == GNUTLS_PK_RSA) {
 
@@ -202,6 +212,10 @@ rdssl_cert_to_rkey(RDSSL_CERT * cert, uint32 * key_len)
 
 	} else if (algo == GNUTLS_E_UNIMPLEMENTED_FEATURE) {
 
+		/* Maybe we should get rid of gnutls_x509_crt_get_pk_oid() and
+		   check public key algo in  libtasn_read_cert_pk_params() */
+
+#if GNUTLS_VERSION_NUMBER >= 0x030500
 		// manpage says that this function is useful when gnutls_x509_crt_get_pk_algorithm() returns GNUTLS_PK_UNKNOWN
 		if ((ret = gnutls_x509_crt_get_pk_oid(*cert, oid, &oid_size)) != GNUTLS_E_SUCCESS) {
 			logger(Protocol, Error, "%s:%s:%d: Failed to get OID of public key algorithm. GnuTLS error = 0x%02x (%s)\n",
@@ -209,29 +223,29 @@ rdssl_cert_to_rkey(RDSSL_CERT * cert, uint32 * key_len)
 			return NULL;
 		}
 
-		/* By some reason, Microsoft sets the OID of the Public RSA key to
-		   the oid for "MD5 with RSA Encryption" instead of "RSA Encryption"
-
-		   Kudos to Richard Levitte for the finding this and proposed the fix
-		   using OpenSSL. */
-
 		if (!strncmp(oid, OID_SHA_WITH_RSA_SIGNATURE, strlen(OID_SHA_WITH_RSA_SIGNATURE))
 				|| !strncmp(oid, OID_MD5_WITH_RSA_SIGNATURE, strlen(OID_MD5_WITH_RSA_SIGNATURE))) {
+			check_pk_algo = 0;
+		} else {
+			logger(Protocol, Error, "%s:%s:%d: Wrong public key algorithm algo = 0x%02x (%s)\n",
+					__FILE__, __func__, __LINE__, algo, oid);
+			return NULL;
+		}
+#endif
 
-			len = sizeof(data);
+		len = sizeof(data);
 
-			if ((ret = gnutls_x509_crt_export(*cert, GNUTLS_X509_FMT_DER, data, &len)) != GNUTLS_E_SUCCESS) {
-				logger(Protocol, Error, "%s:%s:%d: Failed to encode X.509 certificate to DER. GnuTLS error = 0x%02x (%s)\n",
-						__FILE__, __func__, __LINE__, ret, gnutls_strerror(ret));
-				return NULL;
-			}
+		if ((ret = gnutls_x509_crt_export(*cert, GNUTLS_X509_FMT_DER, data, &len)) != GNUTLS_E_SUCCESS) {
+			logger(Protocol, Error, "%s:%s:%d: Failed to encode X.509 certificate to DER. GnuTLS error = 0x%02x (%s)\n",
+					__FILE__, __func__, __LINE__, ret, gnutls_strerror(ret));
+			return NULL;
+		}
 
-			if ((ret = libtasn_read_cert_pk_parameters(data, len, &m, &e)) != 0) {
-				logger(Protocol, Error, "%s:%s:%d: Failed to read RSA public key parameters\n",
-						__FILE__, __func__, __LINE__);
+		if ((ret = libtasn_read_cert_pk_parameters(data, len, &m, &e, check_pk_algo)) != 0) {
+			logger(Protocol, Error, "%s:%s:%d: Failed to read RSA public key parameters\n",
+					__FILE__, __func__, __LINE__);
 
-				return NULL;
-			}
+			return NULL;
 		}
 
 	} else {

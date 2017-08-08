@@ -41,9 +41,6 @@
 #define RDSSL_CERT gnutls_x509_crt_t
 #define RDSSL_RKEY struct rsa_public_key
 
-#define OID_SHA_WITH_RSA_SIGNATURE	"1.3.14.3.2.15"
-#define OID_MD5_WITH_RSA_SIGNATURE	"1.3.14.3.2.25"
-
 void rdssl_sha1_init(RDSSL_SHA1 * sha1);
 void rdssl_sha1_update(RDSSL_SHA1 * sha1, uint8 * data, uint32 len);
 void rdssl_sha1_final(RDSSL_SHA1 * sha1, uint8 * out_data);

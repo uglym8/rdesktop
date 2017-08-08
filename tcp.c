@@ -300,8 +300,15 @@ tcp_tls_connect(void)
 	CHECK(gnutls_certificate_allocate_credentials(&xcred));
 	CHECK(gnutls_credentials_set(g_tls_session, GNUTLS_CRD_CERTIFICATE, xcred));
 
+#if GNUTLS_VERSION_NUMBER >= 0x030109
 	gnutls_transport_set_int(g_tls_session, g_sock);
+#else
+	gnutls_transport_set_ptr(g_tls_session, (gnutls_transport_ptr_t)g_sock);
+#endif
+
+#if GNUTLS_VERSION_NUMBER >= 0x030100
 	gnutls_handshake_set_timeout(g_tls_session, GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT);
+#endif
 
 	/* Perform the TLS handshake */
 	do {
@@ -309,6 +316,8 @@ tcp_tls_connect(void)
 	} while (err < 0 && gnutls_error_is_fatal(err) == 0);
 
 	if (err < 0) {
+
+#if GNUTLS_VERSION_NUMBER >= 0x030406
 		if (err == GNUTLS_E_CERTIFICATE_VERIFICATION_ERROR) {
 			/* check certificate verification status */
 			type = gnutls_certificate_type_get(g_tls_session);
@@ -316,14 +325,17 @@ tcp_tls_connect(void)
 			CHECK(gnutls_certificate_verification_status_print(status, type, &out, 0));
 			gnutls_free(out.data);
 		}
+#endif
 
 		goto fail;
 
 	} else {
+#if GNUTLS_VERSION_NUMBER >= 0x03010a
 		char *desc;
 		desc = gnutls_session_get_desc(g_tls_session);
 		//printf("TLS  Session info: %s\n", desc);
 		gnutls_free(desc);
+#endif
 	}
 
 	return True;
