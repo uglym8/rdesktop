@@ -1,5 +1,11 @@
+dist: trusty
 language: c
 
 compiler: gcc
+
+before_install:
+ - sudo apt-get -qq update
+ - sudo apt-get install -y nettle-dev libtasn1-dev libgnutls-dev
+
 
 script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
