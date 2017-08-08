@@ -153,6 +153,20 @@ if test x"$HAVE_XRANDR" = "x1"; then
     AC_DEFINE(HAVE_XRANDR)
 fi
 
+# libtasn1
+if test -n "$PKG_CONFIG"; then
+    PKG_CHECK_MODULES(LIBTASN1, libtasn1, [HAVE_LIBTASN1=1], [HAVE_LIBTASN1=0])
+fi
+if test x"$HAVE_LIBTASN1" = "x1"; then
+    CFLAGS="$CFLAGS $LIBTASN1_CFLAGS"
+    LIBS="$LIBS $LIBTASN1_LIBS"
+else
+	   echo
+	   echo "rdesktop requires libtasn1. Please install the dependency"
+	   echo
+	   exit 1
+fi
+
 dnl Smartcard support
 AC_ARG_ENABLE(smartcard, AS_HELP_STRING([--disable-smartcard], [disable support for smartcard]))
 AS_IF([test "x$enable_smartcard" != "xno"], [
