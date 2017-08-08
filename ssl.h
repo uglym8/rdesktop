@@ -4,6 +4,7 @@
    Copyright (C) Matthew Chapman 1999-2008
    Copyright (C) Jay Sorg 2006-2008
    Copyright 2017 Henrik Andersson <hean01@cendio.se> for Cendio AB
+   Copyright 2017 Alexander Zakharov <uglym8@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,25 +23,26 @@
 #ifndef _RDSSL_H
 #define _RDSSL_H
 
-#include <openssl/rc4.h>
-#include <openssl/md5.h>
-#include <openssl/sha.h>
-#include <openssl/err.h>
-#include <openssl/bn.h>
-#include <openssl/x509v3.h>
-#include <openssl/hmac.h>
+#include <gnutls/x509.h>
+#include <gnutls/abstract.h>
 
-#if defined(OPENSSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER >= 0x0090800f)
-#define D2I_X509_CONST const
-#else
-#define D2I_X509_CONST
-#endif
+#include <nettle/md5.h>
+#include <nettle/sha1.h>
+#include <nettle/arcfour.h>
+#include <nettle/hmac.h>
+#include <nettle/rsa.h>
 
-#define RDSSL_RC4 RC4_KEY
-#define RDSSL_SHA1 SHA_CTX
-#define RDSSL_MD5 MD5_CTX
-#define RDSSL_CERT X509
-#define RDSSL_RKEY RSA
+#include <gmp.h>
+#include <libtasn1.h>
+
+#define RDSSL_RC4 struct arcfour_ctx
+#define RDSSL_SHA1 struct sha1_ctx
+#define RDSSL_MD5 struct md5_ctx
+#define RDSSL_CERT gnutls_x509_crt_t
+#define RDSSL_RKEY struct rsa_public_key
+
+#define OID_SHA_WITH_RSA_SIGNATURE	"1.3.14.3.2.15"
+#define OID_MD5_WITH_RSA_SIGNATURE	"1.3.14.3.2.25"
 
 void rdssl_sha1_init(RDSSL_SHA1 * sha1);
 void rdssl_sha1_update(RDSSL_SHA1 * sha1, uint8 * data, uint32 len);
@@ -65,5 +67,4 @@ RD_BOOL rdssl_sig_ok(uint8 * exponent, uint32 exp_len, uint8 * modulus, uint32 m
 
 void rdssl_hmac_md5(const void *key, int key_len,
 		    const unsigned char *msg, int msg_len, unsigned char *md);
-void rdssl_log_ssl_errors(const char *prefix);
 #endif
