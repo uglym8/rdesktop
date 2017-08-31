@@ -32,9 +32,6 @@
 #include <nettle/hmac.h>
 #include <nettle/rsa.h>
 
-#include <gmp.h>
-#include <libtasn1.h>
-
 #define RDSSL_RC4 struct arcfour_ctx
 #define RDSSL_SHA1 struct sha1_ctx
 #define RDSSL_MD5 struct md5_ctx
