@@ -234,16 +234,18 @@ tcp_recv(STREAM s, uint32 length)
 		}
 
 		if (g_ssl_initialized) {
-
 			rcvd = gnutls_record_recv(g_tls_session, s->end, length);
 
-			if (gnutls_error_is_fatal(rcvd)) {
-				logger(Core, Error, "tcp_recv(), gnutls_record_recv() failed with %d: %s\n", rcvd, gnutls_strerror(rcvd));
-				g_network_error = True;
-				return NULL;
-			} else {
-				rcvd = 0;
+			if (rcvd < 0) {
+				if (gnutls_error_is_fatal(rcvd)) {
+					logger(Core, Error, "tcp_recv(), gnutls_record_recv() failed with %d: %s\n", rcvd, gnutls_strerror(rcvd));
+					g_network_error = True;
+					return NULL;
+				} else {
+					rcvd = 0;
+				}
 			}
+
 		}
 		else
 		{
@@ -333,7 +335,7 @@ tcp_tls_connect(void)
 #if GNUTLS_VERSION_NUMBER >= 0x03010a
 		char *desc;
 		desc = gnutls_session_get_desc(g_tls_session);
-		//printf("TLS  Session info: %s\n", desc);
+		logger(Core, Verbose, "TLS  Session info: %s\n", desc);
 		gnutls_free(desc);
 #endif
 	}
@@ -554,8 +556,10 @@ tcp_connect(char *server)
 void
 tcp_disconnect(void)
 {
+	int rv;
 	if (g_ssl_initialized) {
-		//gnutls_bye(g_tls_session, GNUTLS_SHUT_RDWR);
+		//rv = gnutls_bye(g_tls_session, GNUTLS_SHUT_RDWR);
+		rv = gnutls_bye(g_tls_session, GNUTLS_SHUT_WR);
 		gnutls_deinit(g_tls_session);
 		// Not needed since 3.3.0
 		gnutls_global_deinit();
