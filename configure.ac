@@ -31,8 +31,6 @@ AC_PATH_TOOL(PKG_CONFIG, pkg-config)
 
 # no .pc for GMP
 AC_SEARCH_LIBS([__gmpz_init], [gmp])
-# pkg-config file Nettle doesn't provide hogweed in libs
-AC_SEARCH_LIBS([nettle_rsa_public_key_clear], [hogweed])
 
 AC_SEARCH_LIBS(socket, socket)
 AC_SEARCH_LIBS(inet_aton, resolv)
@@ -113,6 +111,20 @@ if test x"$HAVE_NETTLE" = "x1"; then
 else
 	   echo
 	   echo "rdesktop requires Nettle. Please install the dependency"
+	   echo
+	   exit 1
+fi
+
+# hogweed
+if test -n "$PKG_CONFIG"; then
+    PKG_CHECK_MODULES(HOGWEED, hogweed, [HAVE_HOGWEED=1], [HAVE_HOGWEED=0])
+fi
+if test x"$HAVE_HOGWEED" = "x1"; then
+    CFLAGS="$CFLAGS $HOGWEED_CFLAGS"
+    LIBS="$LIBS $HOGWEED_LIBS"
+else
+	   echo
+	   echo "rdesktop requires hogweed. Please install the dependency"
 	   echo
 	   exit 1
 fi
