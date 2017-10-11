@@ -23,6 +23,7 @@
 #include "ssl.h"
 
 extern char g_hostname[16];
+extern int g_dpi;
 extern int g_width;
 extern int g_height;
 extern unsigned int g_keylayout;
@@ -392,7 +393,7 @@ static void
 sec_out_mcs_data(STREAM s, uint32 selected_protocol)
 {
 	int hostlen = 2 * strlen(g_hostname);
-	int length = 162 + 76 + 12 + 4;
+	int length = 162 + 76 + 12 + 4 + (g_dpi != 0 ? 18: 0);
 	unsigned int i;
 
 	if (g_num_channels > 0)
@@ -420,8 +421,8 @@ sec_out_mcs_data(STREAM s, uint32 selected_protocol)
 
 	/* Client information */
 	out_uint16_le(s, SEC_TAG_CLI_INFO);
-	out_uint16_le(s, 216);	/* length */
-	out_uint16_le(s, (g_rdp_version >= RDP_V5) ? 4 : 1);	/* RDP version. 1 == RDP4, 4 >= RDP5 to RDP8 */
+	out_uint16_le(s, 216 + (g_dpi != 0 ? 18: 0));	/* length */
+	out_uint16_le(s, (g_rdp_version >=RDP_V5) ? 4 : 1);	/* RDP version. 1 == RDP4, 4 >= RDP5 to RDP8 */
 	out_uint16_le(s, 8);
 	out_uint16_le(s, g_width);
 	out_uint16_le(s, g_height);
@@ -449,6 +450,18 @@ sec_out_mcs_data(STREAM s, uint32 selected_protocol)
 	out_uint32_le(s, 1);
 	out_uint8s(s, 64);
 	out_uint32_le(s, selected_protocol);	/* End of client info */
+
+	if (g_dpi) {
+
+		/* Extended client info describing monitor geometry */
+		out_uint32_le(s, g_width * 254 / (g_dpi * 10)); /* desktop physical width */
+		out_uint32_le(s, g_height * 254 / (g_dpi * 10)); /* desktop physical height */
+		out_uint16_le(s, 0); /* orientation: landscape */
+		out_uint32_le(s, g_dpi < 96 ? 100 : (g_dpi * 100 + 48) / 96); /* desktop scale factor */
+		out_uint32_le(s, g_dpi < 134 ? 100 : (g_dpi < 173 ? 140 : 180)); /* device scale factor */
+		/* the only allowed values for device scale factor and desktop scale factor are 100, 140, and 180. */
+	}
+
 
 	/* Write a Client Cluster Data (TS_UD_CS_CLUSTER) */
 	uint32 cluster_flags = 0;

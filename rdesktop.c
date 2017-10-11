@@ -71,6 +71,7 @@ int g_sizeopt = 0;		/* If non-zero, a special size has been
 				   requested. If 1, the geometry will be fetched
 				   from _NET_WORKAREA. If negative, absolute value
 				   specifies the percent of the whole screen. */
+int g_dpi = 0;
 int g_width = 800;
 int g_height = 600;
 int g_xpos = 0;
@@ -739,6 +740,17 @@ main(int argc, char *argv[])
 					}
 
 					p++;
+				}
+
+				if (*p == '@') {
+					g_dpi = strtol(p + 1, &p, 10);
+
+					if (g_dpi <= 0) {
+						logger(Core, Error, "Wrong DPI value (%d)", g_dpi);
+						return EX_USAGE;
+					}
+
+					logger(Core, Debug, "Using DPI value of %d", g_dpi);
 				}
 
 				if (*p == '+' || *p == '-')
