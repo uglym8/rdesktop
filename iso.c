@@ -33,6 +33,9 @@ extern char *g_sc_reader_name;
 extern char *g_sc_card_name;
 extern char *g_sc_container_name;
 
+extern RD_BOOL g_extended_data_supported;
+extern int g_num_monitors;
+
 
 /* Send a self-contained ISO PDU */
 static void
@@ -253,10 +256,11 @@ iso_connect(char *server, char *username, char *domain, char *password,
 		const char *reason = NULL;
 
 		uint8 type = 0;
+		uint8 flags = 0;
 		uint32 data = 0;
 
 		in_uint8(s, type);
-		in_uint8s(s, 1); /* skip flags */
+		in_uint8(s, flags); /* flags */
 		in_uint8s(s, 2); /* skip length */
 		in_uint32(s, data);
 
@@ -316,6 +320,19 @@ iso_connect(char *server, char *username, char *domain, char *password,
 			logger(Protocol, Error, "iso_connect(), expected RDP_NEG_RSP, got 0x%x",
 			       type);
 			return False;
+		}
+
+		if (flags & EXTENDED_CLIENT_DATA_SUPPORTED) {
+			g_extended_data_supported = True;
+			logger(Protocol, Debug, "Server supports Extended Client Data");
+		}
+		else {
+			g_extended_data_supported = False;
+			logger(Protocol, Debug, "Server does not support Extended Client Data");
+		}
+		if ((g_num_monitors > 1) && !g_extended_data_supported) {
+			logger(Protocol, Warning, "Got more than 1 monitor but server does not support Extended Client Data");
+			g_num_monitors = 1;
 		}
 
 		/* handle negotiation response */
