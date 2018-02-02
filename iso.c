@@ -26,13 +26,12 @@ extern RD_BOOL g_encryption_initial;
 extern RDP_VERSION g_rdp_version;
 extern RD_BOOL g_use_password_as_pin;
 
-static RD_BOOL g_negotiate_rdp_protocol = True;
-
 extern char *g_sc_csp_name;
 extern char *g_sc_reader_name;
 extern char *g_sc_card_name;
 extern char *g_sc_container_name;
 
+extern RD_BOOL g_extended_data_supported;
 
 /* Send a self-contained ISO PDU */
 static void
@@ -62,7 +61,7 @@ iso_send_connection_request(char *username, uint32 neg_proto)
 	STREAM s;
 	int length = 30 + strlen(username);
 
-	if (g_rdp_version >= RDP_V5 && g_negotiate_rdp_protocol)
+	if (g_rdp_version >= RDP_V5)
 		length += 8;
 
 	s = tcp_init(length);
@@ -83,7 +82,7 @@ iso_send_connection_request(char *username, uint32 neg_proto)
 	out_uint8(s, 0x0d);	/* cookie termination string: CR+LF */
 	out_uint8(s, 0x0a);
 
-	if (g_rdp_version >= RDP_V5 && g_negotiate_rdp_protocol)
+	if (g_rdp_version >= RDP_V5)
 	{
 		/* optional RDP protocol negotiation request for RDPv5 */
 		out_uint8(s, RDP_NEG_REQ);
@@ -223,7 +222,7 @@ iso_connect(char *server, char *username, char *domain, char *password,
 	RD_BOOL is_fastpath;
 	uint8 fastpath_hdr;
 
-	g_negotiate_rdp_protocol = True;
+	RD_BOOL ok_to_reconnect = False;
 
 	neg_proto = PROTOCOL_SSL;
 
@@ -242,7 +241,7 @@ iso_connect(char *server, char *username, char *domain, char *password,
 		logger(Core, Verbose, "Connecting to server using SSL...");
 
       retry:
-	*selected_protocol = PROTOCOL_RDP;
+	*selected_protocol = neg_proto;
 	code = 0;
 
 	if (!tcp_connect(server))
@@ -267,17 +266,16 @@ iso_connect(char *server, char *username, char *domain, char *password,
 		const char *reason = NULL;
 
 		uint8 type = 0;
+		uint8 flags = 0;
 		uint32 data = 0;
 
 		in_uint8(s, type);
-		in_uint8s(s, 1); /* skip flags */
+		in_uint8(s, flags); /* skip flags */
 		in_uint8s(s, 2); /* skip length */
 		in_uint32(s, data);
 
 		if (type == RDP_NEG_FAILURE)
 		{
-			RD_BOOL retry_without_neg = False;
-
 			switch (data)
 			{
 				case SSL_WITH_USER_AUTH_REQUIRED_BY_SERVER:
@@ -285,11 +283,11 @@ iso_connect(char *server, char *username, char *domain, char *password,
 					break;
 				case SSL_NOT_ALLOWED_BY_SERVER:
 					reason = "SSL not allowed by server";
-					retry_without_neg = True;
+					ok_to_reconnect = True;
 					break;
 				case SSL_CERT_NOT_ON_SERVER:
 					reason = "no valid authentication certificate on server";
-					retry_without_neg = True;
+					ok_to_reconnect = True;
 					break;
 				case INCONSISTENT_FLAGS:
 					reason = "inconsistent negotiation flags";
@@ -306,7 +304,7 @@ iso_connect(char *server, char *username, char *domain, char *password,
 
 			tcp_disconnect();
 
-			if (retry_without_neg)
+			if (ok_to_reconnect)
 			{
 				if (reason != NULL)
 				{
@@ -316,7 +314,9 @@ iso_connect(char *server, char *username, char *domain, char *password,
 				}
 
 				logger(Core, Notice, "Retrying with plain RDP.");
-				g_negotiate_rdp_protocol = False;
+
+				neg_proto = PROTOCOL_RDP;
+
 				goto retry;
 			}
 
@@ -330,6 +330,15 @@ iso_connect(char *server, char *username, char *domain, char *password,
 			logger(Protocol, Error, "iso_connect(), expected RDP_NEG_RSP, got 0x%x",
 			       type);
 			return False;
+		}
+
+		if (flags & EXTENDED_CLIENT_DATA_SUPPORTED) {
+			g_extended_data_supported = True;
+			logger(Protocol, Debug, "Server supports Extended Client Data");
+		}
+		else {
+			g_extended_data_supported = False;
+			logger(Protocol, Debug, "Server does not support Extended Client Data");
 		}
 
 		/* handle negotiation response */
