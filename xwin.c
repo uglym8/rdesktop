@@ -1895,48 +1895,61 @@ set_wm_client_machine(Display * dpy, Window win)
 static RD_BOOL
 xwin_get_monitors_xrandr(void)
 {
+	int i, j;
 	int event_base, error_base;
-	XRRScreenResources *xrrr = NULL;
+
 	XRRCrtcInfo *xrrci = NULL;
-	int i, isPrimary;
+	XRROutputInfo *info = NULL;
+	XRRScreenResources *xrrr = NULL;
 
 	if (!XRRQueryExtension (g_display, &event_base, &error_base)) {
-		logger(GUI, Debug, "XRandR is not supported");
+		logger(GUI, Debug, "%s: XRandR is not supported", __func__);
 		return False;
 	}
 
 	xrrr = XRRGetScreenResources(g_display, DefaultRootWindow(g_display));
 	if (xrrr == NULL) {
-		logger(GUI, Warning, "XRRGetScreenResources failed");
+		logger(GUI, Warning, "%s: XRRGetScreenResources failed", __func__);
 		return False;
 	}
 
-	g_num_monitors = xrrr->ncrtc;
-	logger(GUI, Debug, "Number of monitors = %d", g_num_monitors);
+	logger(GUI, Verbose, "%s: Number of outputs = %d", __func__, xrrr->noutput);
 
-	memset(g_monitors, 0, sizeof(RDP_MONITOR) * g_num_monitors);
+	j = 0;
 
-	isPrimary = 0;
+	for (i = 0; i < xrrr->noutput; i++) {
+		info = XRRGetOutputInfo(g_display, xrrr, xrrr->outputs[i]);
 
-	for (i = 0; i < g_num_monitors; ++i) {
-		xrrci = XRRGetCrtcInfo(g_display, xrrr, xrrr->crtcs[i]);
-		logger(GUI, Debug, "%dx%d+%d+%d", xrrci->width, xrrci->height, xrrci->x, xrrci->y);
-		g_monitors[i].x =  xrrci->x;
-		g_monitors[i].y = xrrci->y;
-		g_monitors[i].width = xrrci->width;
-		g_monitors[i].width = (g_monitors[i].width + 3) & ~3; // make sure width is a multiple of 4
-		g_monitors[i].height = xrrci->height;
-		g_monitors[i].is_primary = False;
+		if (info->connection != RR_Connected) {
+			XRRFreeOutputInfo(info);
+			continue;
+		}
 
-		if ( (xrrci->x == 0) && (xrrci->y == 0))
-			isPrimary = i;
+		xrrci = XRRGetCrtcInfo(g_display, xrrr, info->crtc);
+
+		logger(GUI, Verbose, "%d) %s: %dx%d+%d+%d", j, info->name, xrrci->width, xrrci->height, xrrci->x, xrrci->y);
+
+		g_monitors[j].x = xrrci->x;
+		g_monitors[j].y = xrrci->y;
+		g_monitors[j].width = xrrci->width;
+		g_monitors[j].width = (g_monitors[j].width + 3) & ~3; // make sure width is a multiple of 4
+		g_monitors[j].height = xrrci->height;
+		g_monitors[j].is_primary = False;
+
+		if ((xrrci->x == 0) && (xrrci->y == 0))
+			g_monitors[j].is_primary = True;
+
+		j++;
 
 		XRRFreeCrtcInfo(xrrci);
+		XRRFreeOutputInfo(info);
 	}
 
-	g_monitors[isPrimary].is_primary = True;
+	logger(GUI, Verbose, "%s: Number of monitors = %d", __func__, j);
 
 	XRRFreeScreenResources(xrrr);
+
+	g_num_monitors = j;
 
 	return True;
 }
@@ -1967,14 +1980,12 @@ xwin_get_monitors_xinerama(void)
 
 	g_num_monitors = ncrtc;
 
-	logger(GUI, Debug, "Number of monitors = %d", g_num_monitors);
-
-	memset(g_monitors, 0, sizeof(RDP_MONITOR) * g_num_monitors);
+	logger(GUI, Verbose, "Number of monitors = %d", g_num_monitors);
 
 	isPrimary = 0;
 
 	for (i = 0; i < g_num_monitors; ++i) {
-		logger(GUI, Debug, "%dx%d+%d+%d", p[i].width, p[i].height, p[i].x_org, p[i].y_org);
+		logger(GUI, Verbose, "%dx%d+%d+%d", p[i].width, p[i].height, p[i].x_org, p[i].y_org);
 		g_monitors[i].x =  p[i].x_org;
 		g_monitors[i].y = p[i].y_org;
 		g_monitors[i].width = p[i].width;
@@ -1998,6 +2009,8 @@ static RD_BOOL
 xwin_get_monitors(void)
 {
 	RD_BOOL bMonitorFound = False;
+
+	memset(g_monitors, 0, sizeof(RDP_MONITOR) * MAX_MONITORS);
 
 #ifdef HAVE_XRANDR
 	bMonitorFound = xwin_get_monitors_xrandr();
@@ -2089,6 +2102,8 @@ ui_init(void)
 	{
 		seamless_init();
 	}
+
+	xwin_get_monitors();
 
 	return True;
 }
