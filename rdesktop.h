@@ -138,6 +138,8 @@
 #define EXRD_WINDOW_CLOSED  62
 #define EXRD_UNKNOWN        63
 
+#define MAX_MONITORS 16
+
 #define STRNCPY(dst,src,n)	{ strncpy(dst,src,n-1); dst[n-1] = 0; }
 
 #ifndef MIN

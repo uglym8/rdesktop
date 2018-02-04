@@ -59,6 +59,11 @@ uint16 g_server_rdp_version = 0;
 static int g_sec_encrypt_use_count = 0;
 static int g_sec_decrypt_use_count = 0;
 
+extern int g_num_monitors;
+extern RDP_MONITOR g_monitors[MAX_MONITORS];
+
+extern RD_BOOL g_extended_data_supported;
+
 /*
  * I believe this is based on SSLv3 with the following differences:
  *  MAC algorithm (5.2.3.1) uses only 32-bit length in place of seq_num/type/length fields
@@ -407,6 +412,10 @@ sec_out_mcs_connect_initial_pdu(STREAM s, uint32 selected_protocol)
 	if (g_num_channels > 0)
 		length += g_num_channels * 12 + 8;
 
+	if ((g_num_monitors > 1) && g_extended_data_supported) {
+		length += (g_num_monitors * 20) + 12;
+	}
+
 	/* Generic Conference Control (T.124) ConferenceCreateRequest */
 	out_uint16_be(s, 5);
 	out_uint16_be(s, 0x14);
@@ -504,6 +513,33 @@ sec_out_mcs_connect_initial_pdu(STREAM s, uint32 selected_protocol)
 			       g_channels[i].name);
 			out_uint8a(s, g_channels[i].name, 8);
 			out_uint32_be(s, g_channels[i].flags);
+		}
+	}
+
+	/* 2.2.1.3.6 Client Monitor Data (TS_UD_CS_MONITOR) */
+	if ((g_num_monitors > 1) && g_extended_data_supported) {
+		int lengthMonitors, n;
+
+		logger(Protocol, Debug, "Informing server about %d monitors\n", g_num_monitors);
+		out_uint16_le(s, CS_MONITOR);	/* User Data Header type */
+
+		lengthMonitors = 12 + (20 * g_num_monitors);
+		out_uint16_le(s, lengthMonitors);
+		out_uint32_le(s, 0); /* flags (unused) */
+		out_uint32_le(s, g_num_monitors); /* monitorCount */
+		for (n = 0; n < g_num_monitors; n++) {
+			out_uint32_le(s, g_monitors[n].x); /* left */
+			out_uint32_le(s, g_monitors[n].y); /* top */
+			out_uint32_le(s, g_monitors[n].x +
+					g_monitors[n].width-1); /* right */
+			out_uint32_le(s, g_monitors[n].y +
+					g_monitors[n].height-1); /* bottom */
+			out_uint32_le(s, g_monitors[n].is_primary ? 1 : 0); /* isPrimary */
+			logger(Protocol, Debug, "Setting monitors %d %dx%d at %d,%d rect(l:%d,t:%d,r:%d,b:%d)\n",
+					n,g_monitors[n].width,g_monitors[n].height,g_monitors[n].x,g_monitors[n].y,
+					g_monitors[n].x, g_monitors[n].y,
+					g_monitors[n].x + g_monitors[n].width-1, g_monitors[n].y +g_monitors[n].height-1
+				  );
 		}
 	}
 
