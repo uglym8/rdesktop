@@ -2,6 +2,7 @@
    rdesktop: A Remote Desktop Protocol client.
    Persistent Bitmap Cache routines
    Copyright (C) Jeroen Meijer <jeroen@oldambt7.com> 2004-2008
+   Copyright 2018 Alexander Zakharov <uglym8@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -165,6 +166,7 @@ pstcache_init(uint8 cache_id)
 {
 	int fd;
 	char filename[256];
+	char *peer_ipa;
 
 	if (g_pstcache_enumerated)
 		return True;
@@ -181,8 +183,10 @@ pstcache_init(uint8 cache_id)
 		return False;
 	}
 
+	peer_ipa = tcp_get_peer_address();
+
 	g_pstcache_Bpp = (g_server_depth + 7) / 8;
-	sprintf(filename, "cache/pstcache_%d_%d", cache_id, g_pstcache_Bpp);
+	sprintf(filename, "cache/pstcache_%s_%d_%d", peer_ipa, cache_id, g_pstcache_Bpp);
 	logger(Core, Debug, "pstcache_init(), bitmap cache file %s", filename);
 
 	fd = rd_open_file(filename);

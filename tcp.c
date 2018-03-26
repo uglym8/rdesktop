@@ -4,6 +4,7 @@
    Copyright (C) Matthew Chapman <matthewc.unsw.edu.au> 1999-2008
    Copyright 2005-2011 Peter Astrand <astrand@cendio.se> for Cendio AB
    Copyright 2012-2017 Henrik Andersson <hean01@cendio.se> for Cendio AB
+   Copyright 2018 Alexander Zakharov <uglym8@gmail.com>
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -641,6 +642,24 @@ tcp_get_address()
 	else
 		strcpy(ipaddr, "127.0.0.1");
 	return ipaddr;
+}
+
+char *
+tcp_get_peer_address(void)
+{
+	static char peer_ipa[32];
+	struct sockaddr_in sockaddr;
+
+	socklen_t len = sizeof(sockaddr);
+
+	if (getpeername(g_sock, (struct sockaddr *) &sockaddr, &len) == 0) {
+		uint8 *ip = (uint8 *) & sockaddr.sin_addr;
+		sprintf(peer_ipa, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+	} else {
+		strcpy(peer_ipa, "0.0.0.0");
+	}
+
+	return peer_ipa;
 }
 
 RD_BOOL
