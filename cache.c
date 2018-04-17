@@ -225,10 +225,17 @@ cache_put_bitmap(uint8 id, uint16 idx, RD_HBITMAP bitmap)
 	if ((id < NUM_ELEMENTS(g_bmpcache)) && (idx < NUM_ELEMENTS(g_bmpcache[0])))
 	{
 		old = g_bmpcache[id][idx].bitmap;
-		if (old != NULL)
+
+		if (old != NULL) {
 			ui_destroy_bitmap(old);
+		}
+
 		g_bmpcache[id][idx].bitmap = bitmap;
 
+		if (old == NULL) {
+			g_bmpcache_count[id]++;
+		}
+#if 0
 		if (IS_PERSISTENT(id))
 		{
 			if (old == NULL)
@@ -238,6 +245,7 @@ cache_put_bitmap(uint8 id, uint16 idx, RD_HBITMAP bitmap)
 			if (g_bmpcache_count[id] > BMPCACHE2_C2_CELLS)
 				cache_evict_bitmap(id);
 		}
+#endif
 	}
 	else if ((id < NUM_ELEMENTS(g_volatile_bc)) && (idx == 0x7fff))
 	{
