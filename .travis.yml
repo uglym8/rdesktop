@@ -1,8 +1,7 @@
 dist: trusty
-
 language: c
-
 compiler: gcc
+sudo: required
 
 # safelist
 branches:
@@ -18,7 +17,8 @@ addons:
       name: "uglym8/rdesktop"
       description: "Unix client for Microsoft Remote Desktop Services. http://www.rdesktop.org"
     notification_email: uglym8@gmail.com
-    build_command_prepend: "./bootstrap && ./configure --disable-credssp --disable-smartcard"
+    build_command_prepend: "./bootstrap"
+    #build_command_prepend: "./bootstrap && ./configure --disable-credssp --disable-smartcard"
     build_command:   "make"
     #branch_pattern: coverity_scan
     #branch_pattern: master
@@ -29,12 +29,16 @@ addons:
   branches:
     - integration
 
-#script: ./bootstrap && ./configure --disable-credssp --disable-smartcard && make
+
+before_install:
+ - sudo apt-get -qq update
+ - sudo apt-get install -y libpcsclite-dev libxcursor-dev libao-dev libasound2-dev
 
 before_script:
 - "./bootstrap"
 
 script:
-- "./configure --disable-credssp --disable-smartcard"
+    #- "./configure --disable-credssp --disable-smartcard"
+- "./configure"
 - build-wrapper-linux-x86-64 --out-dir build-wrapper-out make clean all
 - sonar-scanner -X -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN
