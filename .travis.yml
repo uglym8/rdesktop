@@ -32,7 +32,7 @@ addons:
 
 before_install:
  - sudo apt-get -qq update
- - sudo apt-get install -y libpcsclite-dev libxcursor-dev libao-dev libasound2-dev
+ - sudo apt-get install -y libpcsclite-dev libxcursor-dev libao-dev libasound2-dev libgssglue-dev
 
 before_script:
 - "./bootstrap"
