@@ -17,7 +17,7 @@ addons:
       name: "uglym8/rdesktop"
       description: "Unix client for Microsoft Remote Desktop Services. http://www.rdesktop.org"
     notification_email: uglym8@gmail.com
-    build_command_prepend: "./bootstrap"
+    build_command_prepend: "./bootstrap && ./configure"
     #build_command_prepend: "./bootstrap && ./configure --disable-credssp --disable-smartcard"
     build_command:   "make"
     #branch_pattern: coverity_scan
