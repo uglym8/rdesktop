@@ -25,9 +25,10 @@ addons:
     branch_pattern: integration
 
 addons:
-  sonarqube:
-  branches:
-    - integration
+  sonarcloud:
+    organization: uglym8-github
+    branches:
+        - integration
 
 
 before_install:
