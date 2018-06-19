@@ -18,17 +18,14 @@ addons:
       description: "Unix client for Microsoft Remote Desktop Services. http://www.rdesktop.org"
     notification_email: uglym8@gmail.com
     build_command_prepend: "./bootstrap && ./configure"
-    #build_command_prepend: "./bootstrap && ./configure --disable-credssp --disable-smartcard"
     build_command:   "make"
-    #branch_pattern: coverity_scan
-    #branch_pattern: master
     branch_pattern: integration
 
-addons:
-  sonarcloud:
-    organization: uglym8-github
-    branches:
-        - integration
+    #addons:
+    #  sonarcloud:
+    #    organization: uglym8-github
+    #    branches:
+    #        - integration
 
 
 before_install:
@@ -39,7 +36,6 @@ before_script:
 - "./bootstrap"
 
 script:
-    #- "./configure --disable-credssp --disable-smartcard"
 - "./configure"
-- build-wrapper-linux-x86-64 --out-dir build-wrapper-out make clean all
-- sonar-scanner -X -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN
+  #- build-wrapper-linux-x86-64 --out-dir build-wrapper-out make clean all
+  #- sonar-scanner -X -Dsonar.host.url=https://sonarqube.com -Dsonar.login=$SONAR_TOKEN
