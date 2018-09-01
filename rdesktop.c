@@ -144,6 +144,12 @@ RD_BOOL g_pending_resize = False;
 RD_BOOL g_pending_resize_defer = True;
 struct timeval g_pending_resize_defer_timer = {0};
 
+RD_BOOL g_extended_data_supported = False;
+
+/* According to MS-RDPBCGR 2.2.1.3.6 max value for monitorCount is 16 */
+int g_num_monitors = 0;
+RDP_MONITOR g_monitors[MAX_MONITORS];
+
 #ifdef WITH_RDPSND
 RD_BOOL g_rdpsnd = False;
 #endif

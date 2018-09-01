@@ -306,6 +306,16 @@ typedef struct fileinfo
 }
 FILEINFO;
 
+typedef struct rdp_monitor
+{
+	int x;
+	int y;
+	int width;
+	int height;
+	RD_BOOL is_primary;
+} RDP_MONITOR;
+
+
 typedef RD_BOOL(*str_handle_lines_t) (const char *line, void *data);
 
 typedef enum {

@@ -36,6 +36,9 @@
 #ifdef HAVE_XRANDR
 #include <X11/extensions/Xrandr.h>
 #endif
+#ifdef HAVE_XINERAMA
+#include <X11/extensions/Xinerama.h>
+#endif
 
 #ifdef __APPLE__
 #include <sys/param.h>
@@ -67,6 +70,10 @@ extern char g_seamless_spawn_cmd[];
    As of RDP 5.1, it may be 8, 15, 16 or 24. */
 extern int g_server_depth;
 extern int g_win_button_size;
+
+extern int g_num_monitors;
+extern RDP_MONITOR g_monitors[MAX_MONITORS];
+
 
 /* This is a timer used to rate limit actual resizing */
 static struct timeval g_resize_timer = {0};
@@ -1886,6 +1893,141 @@ set_wm_client_machine(Display * dpy, Window win)
 	XSetWMClientMachine(dpy, win, &tp);
 }
 
+#ifdef HAVE_XRANDR
+static RD_BOOL
+xwin_get_monitors_xrandr(void)
+{
+	int i, j;
+	int event_base, error_base;
+
+	XRRCrtcInfo *xrrci = NULL;
+	XRROutputInfo *info = NULL;
+	XRRScreenResources *xrrr = NULL;
+
+	if (!XRRQueryExtension (g_display, &event_base, &error_base)) {
+		logger(GUI, Debug, "%s: XRandR is not supported", __func__);
+		return False;
+	}
+
+	xrrr = XRRGetScreenResources(g_display, DefaultRootWindow(g_display));
+	if (xrrr == NULL) {
+		logger(GUI, Warning, "%s: XRRGetScreenResources failed", __func__);
+		return False;
+	}
+
+	logger(GUI, Verbose, "%s: Number of outputs = %d", __func__, xrrr->noutput);
+
+	j = 0;
+
+	for (i = 0; i < xrrr->noutput; i++) {
+		info = XRRGetOutputInfo(g_display, xrrr, xrrr->outputs[i]);
+
+		if (info->connection != RR_Connected) {
+			XRRFreeOutputInfo(info);
+			continue;
+		}
+
+		xrrci = XRRGetCrtcInfo(g_display, xrrr, info->crtc);
+
+		logger(GUI, Verbose, "%d) %s: %dx%d+%d+%d", j, info->name, xrrci->width, xrrci->height, xrrci->x, xrrci->y);
+
+		g_monitors[j].x = xrrci->x;
+		g_monitors[j].y = xrrci->y;
+		g_monitors[j].width = xrrci->width;
+		g_monitors[j].width = (g_monitors[j].width + 3) & ~3; // make sure width is a multiple of 4
+		g_monitors[j].height = xrrci->height;
+		g_monitors[j].is_primary = False;
+
+		if ((xrrci->x == 0) && (xrrci->y == 0))
+			g_monitors[j].is_primary = True;
+
+		j++;
+
+		XRRFreeCrtcInfo(xrrci);
+		XRRFreeOutputInfo(info);
+	}
+
+	logger(GUI, Verbose, "%s: Number of monitors = %d", __func__, j);
+
+	XRRFreeScreenResources(xrrr);
+
+	g_num_monitors = j;
+
+	return True;
+}
+#endif
+
+#ifdef HAVE_XINERAMA
+static RD_BOOL
+xwin_get_monitors_xinerama(void)
+{
+	int i, isPrimary;
+	int major_version, minor_version, ncrtc;
+
+	if (!XineramaQueryExtension(g_display, &major_version, &minor_version)) {
+		logger(GUI, Debug, "Xinerama is not supported");
+		return False;
+	}
+	if (!XineramaIsActive(g_display)) {
+		logger(GUI, Debug, "Xinerama is not active");
+		return False;
+	}
+
+	XineramaScreenInfo *p = XineramaQueryScreens(g_display, &ncrtc);
+
+	if ((p == NULL) || (ncrtc <= 0)) {
+		logger(GUI, Debug, "XineramaQueryScreens failed to get screen info");
+		return False;
+	}
+
+	g_num_monitors = ncrtc;
+
+	logger(GUI, Verbose, "Number of monitors = %d", g_num_monitors);
+
+	isPrimary = 0;
+
+	for (i = 0; i < g_num_monitors; ++i) {
+		logger(GUI, Verbose, "%dx%d+%d+%d", p[i].width, p[i].height, p[i].x_org, p[i].y_org);
+		g_monitors[i].x =  p[i].x_org;
+		g_monitors[i].y = p[i].y_org;
+		g_monitors[i].width = p[i].width;
+		g_monitors[i].width = (g_monitors[i].width + 3) & ~3; // make sure width is a multiple of 4
+		g_monitors[i].height = p[i].height;
+		g_monitors[i].is_primary = False;
+
+		if ( (p[i].x_org == 0) && (p[i].y_org == 0))
+			isPrimary = i;
+	}
+
+	g_monitors[isPrimary].is_primary = True;
+
+	XFree(p);
+
+	return True;
+}
+#endif
+
+static RD_BOOL
+xwin_get_monitors(void)
+{
+	RD_BOOL bMonitorFound = False;
+
+	memset(g_monitors, 0, sizeof(RDP_MONITOR) * MAX_MONITORS);
+
+#ifdef HAVE_XRANDR
+	bMonitorFound = xwin_get_monitors_xrandr();
+#endif
+
+/* if XRandR is not avaible try Xinerama */
+#ifdef HAVE_XINERAMA
+	if(!bMonitorFound)
+		bMonitorFound = xwin_get_monitors_xinerama();
+#endif
+
+	return bMonitorFound;
+}
+
+
 /* Initialize the UI. This is done once per process. */
 RD_BOOL
 ui_init(void)
@@ -1963,6 +2105,8 @@ ui_init(void)
 		seamless_init();
 	}
 
+	xwin_get_monitors();
+
 	return True;
 }
 
@@ -1986,11 +2130,14 @@ void
 ui_get_workarea_size(uint32 *width, uint32 *height)
 {
 	uint32 x, y, w, h;
+	g_num_monitors = 1;
+
 	if (get_current_workarea(&x, &y, &w, &h) == 0)
 	{
 		*width = w;
 		*height = h;
 		g_using_full_workarea = True;
+		xwin_get_monitors();
 	}
 	else
 	{
@@ -2346,6 +2493,7 @@ xwin_toggle_fullscreen(void)
 	}
 
 	g_fullscreen = !g_fullscreen;
+	g_num_monitors = 1;
 
 
 	/* What size should the new window have? */
@@ -2356,6 +2504,7 @@ xwin_toggle_fullscreen(void)
 		y = 0;
 		width = WidthOfScreen(g_screen);
 		height = HeightOfScreen(g_screen);
+		xwin_get_monitors();
 	}
 	else
 	{
